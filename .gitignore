@@ -1,0 +1,6 @@
+dist/classes
+dist/jars
+dist/packages
+.idea
+azkaban2.iml
+
