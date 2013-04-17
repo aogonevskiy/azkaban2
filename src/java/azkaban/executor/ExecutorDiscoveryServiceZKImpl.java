@@ -3,6 +3,8 @@ package azkaban.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
@@ -18,11 +20,16 @@ public class ExecutorDiscoveryServiceZKImpl implements Watcher, ExecutorDiscover
 
     private final static int SESSION_TIMEOUT = 1000;
 
+    // keep trying for 3 seconds
+    private final static int CONNECTION_TIMEOUT = 3;
+
     private static Logger log = Logger.getLogger(ExecutorDiscoveryServiceZKImpl.class);
 
     private String zkRootNode = null;
 
     private ZooKeeper zk = null;
+
+    private CountDownLatch connectedSignal = new CountDownLatch(1);
 
     public ExecutorDiscoveryServiceZKImpl(String connectString,
                                           String zkRootNode) throws IOException {
@@ -30,6 +37,16 @@ public class ExecutorDiscoveryServiceZKImpl implements Watcher, ExecutorDiscover
         this.zkRootNode = zkRootNode;
 
         this.zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
+
+        try {
+            connectedSignal.await(CONNECTION_TIMEOUT, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            throw new IOException("Could not connect to ZooKeeper, connectionString = " + connectString);
+        }
+
+        if (zk.getState() != ZooKeeper.States.CONNECTED) {
+            throw new IOException("Could not connect to ZooKeeper, connectionString = " + connectString);
+        }
     }
 
     @Override
@@ -97,8 +114,6 @@ public class ExecutorDiscoveryServiceZKImpl implements Watcher, ExecutorDiscover
     @Override
     public void process(WatchedEvent event) {
 
-        // Method pretty much does nothing. Logic to handle connect and disconnect events can be added later.
-
         String fmt = "ZooKeeper Watched Event received. Type:%s, State:%s";
         String msg = String.format(fmt, event.getType(), event.getState());
 
@@ -108,6 +123,9 @@ public class ExecutorDiscoveryServiceZKImpl implements Watcher, ExecutorDiscover
             switch (event.getState()) {
                 case SyncConnected:
                     // The client is in the connected state
+                    if (event.getState() == Event.KeeperState.SyncConnected) {
+                        connectedSignal.countDown();
+                    }
                     break;
                 case Disconnected:
                     // The client is in the disconnected state
