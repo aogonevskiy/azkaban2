@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,6 +39,9 @@ import org.mortbay.thread.QueuedThreadPool;
 
 import azkaban.executor.ExecutorLoader;
 import azkaban.executor.JdbcExecutorLoader;
+import azkaban.executor.ExecutorConfig;
+import azkaban.executor.ExecutorDiscoveryService;
+import azkaban.executor.ExecutorDiscoveryServiceZKImpl;
 import azkaban.jmx.JmxFlowRunnerManager;
 import azkaban.jmx.JmxJettyServer;
 import azkaban.project.JdbcProjectLoader;
@@ -84,7 +88,10 @@ public class AzkabanExecutorServer {
 	public AzkabanExecutorServer(Props props) throws Exception {
 		this.props = props;
 
-		int portNumber = props.getInt("executor.port", DEFAULT_PORT_NUMBER);
+        // calling register method first thing. If it fails - further initialization makes no sense
+        registerExecutorInZK(props);
+
+        int portNumber = props.getInt("executor.port", DEFAULT_PORT_NUMBER);
 		int maxThreads = props.getInt("executor.maxThreads", DEFAULT_THREAD_NUMBER);
 
 		server = new Server(portNumber);
@@ -113,7 +120,7 @@ public class AzkabanExecutorServer {
 		runnerManager.setGlobalProps(executorGlobalProps);
 		
 		configureMBeanServer();
-		
+
 		try {
 			server.start();
 		} 
@@ -125,7 +132,28 @@ public class AzkabanExecutorServer {
 		logger.info("Azkaban Executor Server started on port " + portNumber);
 	}
 
-	private ExecutorLoader createExecLoader(Props props) {
+    private void registerExecutorInZK(Props props) throws IOException {
+
+        String enableZkProperty = props.getString("zk.enabled");
+
+        if (enableZkProperty.equals("1") || enableZkProperty.equalsIgnoreCase("true")) {
+
+            String host = props.getString("zk.hosts");
+            String zkRootNode = props.getString("zk.root_node");
+            logger.info("Initializing ExecutorDiscoveryService. Host = " + host + ", zk_root = " + zkRootNode);
+
+            ExecutorDiscoveryService service = new ExecutorDiscoveryServiceZKImpl(host, zkRootNode);
+
+            InetAddress ip = InetAddress.getLocalHost();
+            String serverHost = ip.getHostAddress();
+            Integer port = props.getInt("executor.port", DEFAULT_PORT_NUMBER);
+            service.registerExecutor(new ExecutorConfig(serverHost, port));
+
+        }
+
+    }
+
+    private ExecutorLoader createExecLoader(Props props) {
 		return new JdbcExecutorLoader(props);
 	}
 	

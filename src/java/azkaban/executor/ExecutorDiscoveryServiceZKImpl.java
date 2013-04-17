@@ -45,6 +45,10 @@ public class ExecutorDiscoveryServiceZKImpl implements Watcher, ExecutorDiscover
         }
 
         if (zk.getState() != ZooKeeper.States.CONNECTED) {
+            try {
+                zk.close();
+                zk = null;
+            } catch (InterruptedException e) { }
             throw new IOException("Could not connect to ZooKeeper, connectionString = " + connectString);
         }
     }
