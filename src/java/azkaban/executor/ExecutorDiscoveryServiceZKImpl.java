@@ -53,6 +53,11 @@ public class ExecutorDiscoveryServiceZKImpl implements Watcher, ExecutorDiscover
         }
     }
 
+    public ExecutorDiscoveryServiceZKImpl(ZooKeeper zk, String zkRootNode) {
+        this.zk = zk;
+        this.zkRootNode = zkRootNode;
+    }
+
     @Override
     public List<ExecutorConfig> getActiveExecutors() throws IOException {
 
@@ -112,6 +117,24 @@ public class ExecutorDiscoveryServiceZKImpl implements Watcher, ExecutorDiscover
         } catch (InterruptedException e) {
             throw new IOException("Failed creating node", e);
         }
+
+    }
+
+    /**
+     * For now just getting a random executor from the list. Will come up with a better approach later.
+     *
+     * Ideally it should be based on executor's available resources and job workflow profile (workflow should
+     * have a profile that specifies resource requirements)
+     *
+     */
+    @Override
+    public ExecutorConfig getExecutor() throws IOException {
+
+        List<ExecutorConfig> executors = getActiveExecutors();
+
+        int index = (int) Math.round(Math.random() * (executors.size() - 1));
+
+        return executors.get(index);
 
     }
 

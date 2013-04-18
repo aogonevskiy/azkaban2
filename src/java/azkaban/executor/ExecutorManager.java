@@ -53,8 +53,9 @@ import azkaban.utils.Props;
 public class ExecutorManager {
 	private static Logger logger = Logger.getLogger(ExecutorManager.class);
 	private ExecutorLoader executorLoader;
-	private String executorHost;
-	private int executorPort;
+//	private String executorHost;
+//	private int executorPort;
+    private ExecutorDiscoveryService executorDiscoveryService;
 	
 	private CleanerThread cleanerThread;
 	
@@ -73,9 +74,16 @@ public class ExecutorManager {
 		this.executorLoader = loader;
 		this.loadRunningFlows();
 		
-		executorHost = props.getString("executor.host", "localhost");
-		executorPort = props.getInt("executor.port");
-		mailer = new ExecutorMailer(props);
+//		executorHost = props.getString("executor.host", "localhost");
+//		executorPort = props.getInt("executor.port");
+
+        try {
+            this.executorDiscoveryService = initExecutorDiscoveryService(props);
+        } catch (IOException e) {
+            throw new ExecutorManagerException("Failed initializing executor discovery service");
+        }
+
+        mailer = new ExecutorMailer(props);
 		executingManager = new ExecutingManagerUpdaterThread();
 		executingManager.start();
 
@@ -83,14 +91,36 @@ public class ExecutorManager {
 		cleanerThread = new CleanerThread(executionLogsRetentionMs);
 		cleanerThread.start();
 	}
-	
-	public String getExecutorHost() {
-		return executorHost;
-	}
-	
-	public int getExecutorPort() {
-		return executorPort;
-	}
+
+    private ExecutorDiscoveryService initExecutorDiscoveryService(Props props) throws IOException {
+
+        ExecutorDiscoveryService service;
+
+        String enableZkProperty = props.getString("zk.enabled");
+        if (enableZkProperty.equals("1") || enableZkProperty.equalsIgnoreCase("true")) {
+
+            String connectionString = props.getString("zk.hosts");
+            String zkRootNode = props.getString("zk.root_node");
+            logger.info("Initializing ExecutorDiscoveryService. connectionString = " +
+                    connectionString + ", zk_root = " + zkRootNode);
+            service = new ExecutorDiscoveryServiceZKImpl(connectionString, zkRootNode);
+
+        } else {
+            service = new ExecutorDiscoveryServicePropsImpl();
+            service.registerExecutor(new ExecutorConfig(props.getString("executor.host", "localhost"),
+                    props.getInt("executor.port")));
+        }
+
+        return service;
+    }
+
+//    public String getExecutorHost() {
+//		return executorHost;
+//	}
+//
+//	public int getExecutorPort() {
+//		return executorPort;
+//	}
 	
 	public State getExecutorThreadState() {
 		return executingManager.getState();
@@ -109,16 +139,38 @@ public class ExecutorManager {
 	}
 	
 	public Set<String> getPrimaryServerHosts() {
-		// Only one for now. More probably later.
-		HashSet<String> ports = new HashSet<String>();
-		ports.add(executorHost + ":" + executorPort);
+
+//		// Only one for now. More probably later.
+//		HashSet<String> ports = new HashSet<String>();
+//		ports.add(executorHost + ":" + executorPort);
+
+        List<ExecutorConfig> activeExecutors = null;
+        try {
+            activeExecutors = this.executorDiscoveryService.getActiveExecutors();
+        } catch (IOException e) {
+            // FIXME I should not swallow an exception here, I know ...
+            logger.error("Failed getting active executors", e);
+        }
+
+        HashSet<String> ports = new HashSet<String>();
+
+        for (ExecutorConfig config : activeExecutors) {
+            ports.add(config.getHost() + ":" + config.getPort());
+        }
+
 		return ports;
 	}
 	
-	public Set<String> getAllActiveExecutorServerHosts() {
+	public Set<String> getAllActiveExecutorServerHosts() throws IOException {
 		// Includes non primary server/hosts
 		HashSet<String> ports = new HashSet<String>();
-		ports.add(executorHost + ":" + executorPort);
+//		ports.add(executorHost + ":" + executorPort);
+
+        List<ExecutorConfig> activeExecutors = this.executorDiscoveryService.getActiveExecutors();
+        for (ExecutorConfig config : activeExecutors) {
+            ports.add(config.getHost() + ":" + config.getPort());
+        }
+
 		for(Pair<ExecutionReference, ExecutableFlow> running: runningFlows.values()) {
 			ExecutionReference ref = running.getFirst();
 			ports.add(ref.getHost() + ":" + ref.getPort());
@@ -403,9 +455,18 @@ public class ExecutorManager {
 			// The exflow id is set by the loader. So it's unavailable until after this call.
 			executorLoader.uploadExecutableFlow(exflow);
 			
-			// We create an active flow reference in the datastore. If the upload fails, we remove the reference.
-			ExecutionReference reference = new ExecutionReference(exflow.getExecutionId(), executorHost, executorPort);
-			executorLoader.addActiveExecutableReference(reference);
+
+            ExecutorConfig executorConfig = null;
+            try {
+                executorConfig = this.executorDiscoveryService.getExecutor();
+            } catch (IOException e) {
+                throw new ExecutorManagerException(e);
+            }
+
+            // We create an active flow reference in the datastore. If the upload fails, we remove the reference.
+            ExecutionReference reference = new ExecutionReference(exflow.getExecutionId(), executorConfig.getHost(),
+                    executorConfig.getPort());
+            executorLoader.addActiveExecutableReference(reference);
 			try {
 				callExecutorServer(reference,  ConnectorParams.EXECUTE_ACTION);
 				runningFlows.put(exflow.getExecutionId(), new Pair<ExecutionReference, ExecutableFlow>(reference, exflow));
@@ -851,7 +912,7 @@ public class ExecutorManager {
 	private Map<ConnectionInfo, List<ExecutableFlow>> getFlowToExecutorMap() {
 		HashMap<ConnectionInfo, List<ExecutableFlow>> exFlowMap = new HashMap<ConnectionInfo, List<ExecutableFlow>>();
 		
-		ConnectionInfo lastPort = new ConnectionInfo(executorHost, executorPort);
+//		ConnectionInfo lastPort = new ConnectionInfo(executorHost, executorPort);
 		for (Pair<ExecutionReference, ExecutableFlow> runningFlow: runningFlows.values()) {
 			ExecutionReference ref = runningFlow.getFirst();
 			ExecutableFlow flow = runningFlow.getSecond();
@@ -862,9 +923,10 @@ public class ExecutorManager {
 			}
 			
 			// Just a silly way to reduce object creation construction of objects since it's most likely that the values will be the same.
-			if (!lastPort.isEqual(ref.getHost(), ref.getPort())) {
-				lastPort = new ConnectionInfo(ref.getHost(), ref.getPort());
-			}
+//			if (!lastPort.isEqual(ref.getHost(), ref.getPort())) {
+//				lastPort = new ConnectionInfo(ref.getHost(), ref.getPort());
+//			}
+            ConnectionInfo lastPort = new ConnectionInfo(ref.getHost(), ref.getPort());
 			
 			List<ExecutableFlow> flows = exFlowMap.get(lastPort);
 			if (flows == null) {

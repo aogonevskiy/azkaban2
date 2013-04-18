@@ -32,5 +32,6 @@
 	<classpathentry kind="lib" path="extlib/mysql-connector-java-5.1.16-bin.jar"/>
 	<classpathentry kind="lib" path="lib/commons-pool-1.6.jar"/>
 	<classpathentry kind="lib" path="lib/zookeeper-3.3.2.jar"/>
+	<classpathentry kind="lib" path="lib/mockito-all-1.9.5.jar"/>
 	<classpathentry kind="output" path="dist/classes"/>
 </classpath>

@@ -18,4 +18,9 @@ public interface ExecutorDiscoveryService {
      */
     public void registerExecutor(ExecutorConfig executorConfig) throws IOException;
 
+    /**
+     * Logic of deciding which executor to use sits here
+     */
+    public ExecutorConfig getExecutor() throws IOException;
+
 }
