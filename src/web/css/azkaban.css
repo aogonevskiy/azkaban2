@@ -2334,7 +2334,8 @@ span.sublabel {
 }
 
 #flow-status table.status td {
-	font-size: 11.5pt;
+/* have to comment it out since adding new row (Executor) makes it look ugly */
+/*	font-size: 11.5pt; */
 }
 
 #flow-status td.first {

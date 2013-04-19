@@ -158,6 +158,7 @@ public class ExecutorDiscoveryServiceZKImpl implements Watcher, ExecutorDiscover
                     // The client is in the disconnected state
                 case Expired:
                     //  The serving cluster has expired this session.
+                    // TODO try to reconnect if session has expired
                     break;
 
             }

@@ -77,6 +77,7 @@
 							<th class="date">Start Time</th>
 							<th class="date">End Time</th>
 							<th class="elapse">Elapsed</th>
+                            <th>Executor</th>
 							<th class="status">Status</th>
 							<th class="action">Action</th>
 						</tr>
@@ -98,6 +99,7 @@
 							<td>$utils.formatDate(${flow.startTime})</td>
 							<td>$utils.formatDate(${flow.endTime})</td>
 							<td>$utils.formatDuration(${flow.startTime}, ${flow.endTime})</td>
+                            <td>${flow.flowExecutor}</td>
 							<td><div class="status ${flow.status}">$utils.formatStatus(${flow.status})</div></td>
 							<td></td>
 						</tr>

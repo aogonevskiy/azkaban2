@@ -54,6 +54,8 @@ public class ExecutableFlow {
 	
 	private HashSet<String> proxyUsers = new HashSet<String>();
 	private ExecutionOptions executionOptions;
+
+    private String flowExecutor;
 	
 	public ExecutableFlow(Flow flow) {
 		this.projectId = flow.getProjectId();
@@ -260,6 +262,7 @@ public class ExecutableFlow {
 		flowObj.put("endTime", endTime);
 		flowObj.put("status", flowStatus.toString());
 		flowObj.put("submitUser", submitUser);
+        flowObj.put("flowExecutor", flowExecutor);
 		flowObj.put("version", version);
 		
 		flowObj.put("executionOptions", this.executionOptions.toObject());
@@ -377,6 +380,7 @@ public class ExecutableFlow {
 		exFlow.endTime = JSONUtils.getLongFromObject(flowObj.get("endTime"));
 		exFlow.flowStatus = Status.valueOf((String)flowObj.get("status"));
 		exFlow.submitUser = (String)flowObj.get("submitUser");
+        exFlow.flowExecutor = (String)flowObj.get("flowExecutor");
 		exFlow.version = (Integer)flowObj.get("version");
 		
 		if (flowObj.containsKey("executionOptions")) {
@@ -461,4 +465,13 @@ public class ExecutableFlow {
 	public void setVersion(int version) {
 		this.version = version;
 	}
+
+    public String getFlowExecutor() {
+        return flowExecutor;
+    }
+
+    public void setFlowExecutor(String flowExecutor) {
+        this.flowExecutor = flowExecutor;
+    }
+
 }

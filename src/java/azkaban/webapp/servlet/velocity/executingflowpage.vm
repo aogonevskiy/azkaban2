@@ -135,6 +135,7 @@
 					<table class="status">
 						<tr><td class="first">Status</td><td id="flowStatus">-</td></tr>
 						<tr><td class="first">Submit User</td><td id="submitUser">-</td></tr>
+                        <tr><td class="first">Executor</td><td id="flowExecutor">-</td></tr>
 					</table>
 					<table class="time">
 						<tr><td class="first">Start Time</td><td id="startTime">-</td></tr>

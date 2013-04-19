@@ -451,10 +451,6 @@ public class ExecutorManager {
 					message = "Flow " + flowId + " is already running with exec id " + StringUtils.join(running, ",") +". Will execute concurrently. ";
 				}
 			}
-			
-			// The exflow id is set by the loader. So it's unavailable until after this call.
-			executorLoader.uploadExecutableFlow(exflow);
-			
 
             ExecutorConfig executorConfig = null;
             try {
@@ -463,6 +459,12 @@ public class ExecutorManager {
                 throw new ExecutorManagerException(e);
             }
 
+            // setting flow executor name to show on UI
+            exflow.setFlowExecutor(executorConfig.getHost() + ":" + executorConfig.getPort());
+
+            // The exflow id is set by the loader. So it's unavailable until after this call.
+			executorLoader.uploadExecutableFlow(exflow);
+			
             // We create an active flow reference in the datastore. If the upload fails, we remove the reference.
             ExecutionReference reference = new ExecutionReference(exflow.getExecutionId(), executorConfig.getHost(),
                     executorConfig.getPort());
@@ -470,9 +472,10 @@ public class ExecutorManager {
 			try {
 				callExecutorServer(reference,  ConnectorParams.EXECUTE_ACTION);
 				runningFlows.put(exflow.getExecutionId(), new Pair<ExecutionReference, ExecutableFlow>(reference, exflow));
-				
-				message += "Execution submitted successfully with exec id " + exflow.getExecutionId();
-			}
+
+                message += "Execution submitted successfully with exec id " + exflow.getExecutionId() +
+                        ". Executor host = " + reference.getHost() + ":" + reference.getPort();
+            }
 			catch (ExecutorManagerException e) {
 				executorLoader.removeActiveExecutableReference(reference.getExecId());
 				throw e;
@@ -868,7 +871,7 @@ public class ExecutorManager {
 		
 		ExecutionReference ref = refPair.getFirst();
 		ExecutableFlow flow = refPair.getSecond();
-		if (updateData.containsKey("error")) {
+        if (updateData.containsKey("error")) {
 			// The flow should be finished here.
 			throw new ExecutorManagerException((String)updateData.get("error"), flow);
 		}

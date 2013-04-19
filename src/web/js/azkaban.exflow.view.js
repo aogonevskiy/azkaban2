@@ -22,8 +22,11 @@ azkaban.StatusView= Backbone.View.extend({
 		
 		var user = data.submitUser;
 		$("#submitUser").text(user);
-		
-		this.statusUpdate(evt);
+
+        var flowExecutor = data.flowExecutor;
+        $("#flowExecutor").text(flowExecutor);
+
+        this.statusUpdate(evt);
 	},
 	statusUpdate : function(evt) {
 		var data = this.model.get("data");

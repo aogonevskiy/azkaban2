@@ -722,6 +722,8 @@ public class ExecutorServlet extends LoginAbstractAzkabanServlet {
 		ret.put("endTime", exFlow.getEndTime());
 		ret.put("submitTime", exFlow.getSubmitTime());
 		ret.put("submitUser", exFlow.getSubmitUser());
+        ret.put("flowExecutor", exFlow.getFlowExecutor());
+
 	}
 	
 	private void ajaxAttemptExecuteFlow(HttpServletRequest req, HttpServletResponse resp, HashMap<String, Object> ret, User user) throws ServletException {
